@@ -1,184 +1,181 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import API from "../services/api";
+import { toast } from "react-toastify";
+import Navbar from "../components/Navbar";
 
 function Dashboard() {
   const [jobs, setJobs] = useState([]);
-  const [form, setForm] = useState({
-    company: "",
-    role: "",
-    package: "",
-    location: "",
-    eligibility: ""
-  });
+  const [form, setForm] = useState({ company: "", role: "", package: "", location: "", eligibility: "", deadline: "" });
+  const [submitting, setSubmitting] = useState(false);
 
-  const token = localStorage.getItem("token");
-
-  // Fetch Jobs
   const fetchJobs = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/jobs", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const res = await API.get("/jobs");
       setJobs(res.data);
-    } catch (err) {
-      console.log(err);
-      alert("Error fetching jobs");
+    } catch {
+      toast.error("Error fetching jobs");
     }
   };
 
-  useEffect(() => {
-    fetchJobs();
-    // eslint-disable-next-line
-  }, []);
+  useEffect(() => { fetchJobs(); }, []);
 
-  // Handle Input Change
-  const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value
-    });
-  };
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  // Add Job
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.company || !form.role) return toast.error("Company and Role are required");
 
+    setSubmitting(true);
     try {
-      await axios.post("http://localhost:5000/api/jobs", form, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      alert("Job added successfully!");
-
-      // Clear form
-      setForm({
-        company: "",
-        role: "",
-        package: "",
-        location: "",
-        eligibility: ""
-      });
-
+      await API.post("/jobs", form);
+      toast.success("Job posted successfully!");
+      setForm({ company: "", role: "", package: "", location: "", eligibility: "", deadline: "" });
       fetchJobs();
-
-    } catch (err) {
-      console.log(err);
-
-      if (err.response) {
-        alert(err.response.data.message || "Error adding job");
-      } else {
-        alert("Server error");
-      }
+    } catch {
+      toast.error("Error adding job");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // Delete Job
   const handleDelete = async (id) => {
+    if (!window.confirm("Delete this job? All applications will be affected.")) return;
     try {
-      await axios.delete(`http://localhost:5000/api/jobs/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      alert("Job deleted");
+      await API.delete(`/jobs/${id}`);
+      toast.success("Job removed");
       fetchJobs();
-
     } catch (err) {
-      console.log(err);
-      alert("Error deleting job");
+      toast.error(err.response?.data?.message || "Error deleting job");
     }
   };
 
-  // Logout
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    window.location.href = "/login";
-  };
+  const getCompanyInitial = (name) => name ? name.charAt(0).toUpperCase() : "?";
 
   return (
-  <div>
-    {/* Navbar */}
-    <div className="navbar">
-      <h2>Placement Portal</h2>
-      <button onClick={handleLogout}>Logout</button>
-    </div>
+    <>
+      <Navbar role="admin" />
 
-    <div className="container">
+      <div className="page">
+        <div className="page-header">
+          <h1>Admin Dashboard</h1>
+          <p>Post new opportunities and manage existing listings</p>
+        </div>
 
-      {/* Add Job */}
-      <div className="card">
-        <h3>Add Job</h3>
-
-        <form onSubmit={handleSubmit}>
-          <input
-            name="company"
-            placeholder="Company"
-            value={form.company}
-            onChange={handleChange}
-          />
-
-          <input
-            name="role"
-            placeholder="Role"
-            value={form.role}
-            onChange={handleChange}
-          />
-
-          <input
-            name="package"
-            placeholder="Package"
-            value={form.package}
-            onChange={handleChange}
-          />
-
-          <input
-            name="location"
-            placeholder="Location"
-            value={form.location}
-            onChange={handleChange}
-          />
-
-          <input
-            name="eligibility"
-            placeholder="Min CGPA"
-            value={form.eligibility}
-            onChange={handleChange}
-          />
-
-          <button type="submit">Add Job</button>
-        </form>
-      </div>
-
-      {/* Job List */}
-      <div className="card">
-        <h3>Your Jobs</h3>
-
-        {jobs.length === 0 ? (
-          <p>No jobs found</p>
-        ) : (
-          jobs.map((job) => (
-            <div className="job-card" key={job._id}>
-              <h4>{job.company}</h4>
-              <p>{job.role}</p>
-              <p>Package: {job.package}</p>
-              <p>Location: {job.location}</p>
-
-              <button onClick={() => handleDelete(job._id)}>
-                Delete
-              </button>
+        {/* STATS */}
+        <div className="stats-row">
+          <div className="stat-card">
+            <div className="stat-card-num">{jobs.length}</div>
+            <div className="stat-card-label">Active Listings</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-num">
+              {[...new Set(jobs.map(j => j.company))].length}
             </div>
-          ))
-        )}
-      </div>
+            <div className="stat-card-label">Companies</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-num">
+              {jobs.filter(j => j.deadline && new Date(j.deadline) > new Date()).length}
+            </div>
+            <div className="stat-card-label">Open Deadlines</div>
+          </div>
+        </div>
 
-    </div>
-  </div>
-);
+        <div className="two-col">
+          {/* ADD JOB FORM */}
+          <div className="card">
+            <div className="card-title">
+              <div className="card-icon" style={{ background: "rgba(79,142,247,0.12)" }}>➕</div>
+              Post New Job
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label className="form-label">Company Name *</label>
+                <input className="form-input" name="company" placeholder="e.g. Google" value={form.company} onChange={handleChange} />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Role / Position *</label>
+                <input className="form-input" name="role" placeholder="e.g. Software Engineer" value={form.role} onChange={handleChange} />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Package (LPA)</label>
+                <input className="form-input" name="package" type="number" placeholder="e.g. 12" value={form.package} onChange={handleChange} />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Location</label>
+                <input className="form-input" name="location" placeholder="e.g. Bangalore" value={form.location} onChange={handleChange} />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Min. CGPA Required</label>
+                <input className="form-input" name="eligibility" type="number" step="0.1" min="0" max="10" placeholder="e.g. 7.5" value={form.eligibility} onChange={handleChange} />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Application Deadline</label>
+                <input className="form-input" name="deadline" type="date" value={form.deadline} onChange={handleChange} style={{ colorScheme: "dark" }} />
+              </div>
+
+              <button className="btn btn-primary" type="submit" disabled={submitting} style={{ width: "100%", justifyContent: "center" }}>
+                {submitting ? "Posting…" : "Post Job"}
+              </button>
+            </form>
+          </div>
+
+          {/* JOB LIST */}
+          <div>
+            <div className="card-title" style={{ marginBottom: "16px" }}>
+              <div className="card-icon" style={{ background: "rgba(56,217,169,0.12)" }}>📋</div>
+              Current Listings
+            </div>
+
+            {jobs.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">🏢</div>
+                <p>No jobs posted yet. Add one using the form.</p>
+              </div>
+            ) : (
+              <div className="jobs-grid">
+                {jobs.map((job) => (
+                  <div className="job-card" key={job._id}>
+                    <div className="job-card-header">
+                      <div>
+                        <div className="company-logo">{getCompanyInitial(job.company)}</div>
+                      </div>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleDelete(job._id)}>
+                        Delete
+                      </button>
+                    </div>
+
+                    <div>
+                      <div className="job-card-title">{job.company}</div>
+                      <div className="job-card-role">{job.role}</div>
+                    </div>
+
+                    <div className="job-meta">
+                      {job.package && <span className="meta-chip package">💰 {job.package} LPA</span>}
+                      {job.location && <span className="meta-chip location">📍 {job.location}</span>}
+                      {job.eligibility && <span className="meta-chip cgpa">⭐ {job.eligibility}+ CGPA</span>}
+                    </div>
+
+                    {job.deadline && (
+                      <div style={{ fontSize: "12px", color: "var(--text3)" }}>
+                        Deadline: {new Date(job.deadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
 
 export default Dashboard;

@@ -1,34 +1,43 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
-function Navbar() {
+function Navbar({ role }) {
+  const location = useLocation();
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const initials = user?.name ? user.name.charAt(0).toUpperCase() : "?";
+
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.href = "/login";
+  };
+
+  const isActive = (path) => location.pathname === path ? "active" : "";
+
   return (
-    <div style={{
-      display: "flex",
-      justifyContent: "space-between",
-      padding: "10px",
-      background: "#282c34",
-      color: "white"
-    }}>
-      <h3>Placement Portal</h3>
+    <nav className="navbar">
+      <Link to={role === "admin" ? "/dashboard" : "/student"} className="navbar-brand">
+        <span className="brand-dot" />
+        PlaceMe
+      </Link>
 
-      <div>
-        <Link to="/dashboard" style={{ color: "white", marginRight: "10px" }}>
-          TNP
-        </Link>
-
-        <Link to="/student" style={{ color: "white", marginRight: "10px" }}>
-          Student
-        </Link>
-
-        <Link to="/login" style={{ color: "white", marginRight: "10px"  }}>
-          Login
-        </Link>
-
-        <Link to="/manage" style={{ color: "white", marginRight: "10px" }}>
-          Manage
-        </Link>
+      <div className="navbar-links">
+        {role === "admin" ? (
+          <>
+            <Link to="/dashboard" className={isActive("/dashboard")}>Dashboard</Link>
+            <Link to="/manage" className={isActive("/manage")}>Applications</Link>
+          </>
+        ) : (
+          <Link to="/student" className={isActive("/student")}>Browse Jobs</Link>
+        )}
       </div>
-    </div>
+
+      <div className="navbar-right">
+        <div className="user-chip">
+          <div className="avatar">{initials}</div>
+          <span>{user?.name || "User"}</span>
+        </div>
+        <button className="btn-logout" onClick={handleLogout}>Sign out</button>
+      </div>
+    </nav>
   );
 }
 

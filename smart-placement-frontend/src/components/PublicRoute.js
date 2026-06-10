@@ -1,9 +1,10 @@
-function PublicRoute({ children }) {
-  const token = localStorage.getItem("token");
+import { Navigate } from "react-router-dom";
 
-  if (token) {
-    window.location.href = "/dashboard";
-    return null;
+function PublicRoute({ children }) {
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+
+  if (user) {
+    return <Navigate to={user.role === "student" ? "/student" : "/dashboard"} replace />;
   }
 
   return children;
