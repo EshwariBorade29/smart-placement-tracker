@@ -1,41 +1,17 @@
 const express = require("express");
 const router = express.Router();
-const Application = require("../models/Application");
+const appController = require("../controllers/applicationController");
+const authMiddleware = require("../middleware/authMiddleware");
 
-// Apply for job
-router.post("/apply", async (req, res) => {
-  const { userId, jobId } = req.body;
+// All application routes require authentication
+router.post("/apply", authMiddleware, appController.applyJob);
 
-  const existing = await Application.findOne({ userId, jobId });
-  if (existing) {
-    return res.json({ message: "Already applied" });
-  }
+// /applications/my — student fetches their own applications (uses req.user.id from token)
+router.get("/my", authMiddleware, appController.getUserApplications);
 
-  const app = new Application({ userId, jobId });
-  await app.save();
+// /applications — admin fetches all applications
+router.get("/", authMiddleware, appController.getApplications);
 
-  res.json({ message: "Applied successfully" });
-});
-
-// Get applications of user
-router.get("/:userId", async (req, res) => {
-  const apps = await Application.find({ userId: req.params.userId });
-  res.json(apps);
-});
-
-// 🔥 NEW: Get all applications (for TNP)
-router.get("/", async (req, res) => {
-  const apps = await Application.find();
-  res.json(apps);
-});
-
-// 🔥 NEW: Update status
-router.put("/status/:id", async (req, res) => {
-  const { status } = req.body;
-
-  await Application.findByIdAndUpdate(req.params.id, { status });
-
-  res.json({ message: "Status updated" });
-});
+router.put("/status/:id", authMiddleware, appController.updateStatus);
 
 module.exports = router;

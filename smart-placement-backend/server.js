@@ -20,6 +20,11 @@ app.use("/api/jobs", jobRoutes);
 
 app.use("/api/applications", applicationRoutes);
 
+app.use((err, req, res, next) => {
+    console.error(err);
+    res.status(500).json({ message: "Server Error" });
+});
+
 app.get("/api/protected", authMiddleware, (req, res) => {
     res.json({
         message: "Protected route accessed",
@@ -35,9 +40,10 @@ const startServer = async () => {
     try {
         await connectDB();
 
-        app.listen(5000, () => {
-            console.log("Server running on port 5000");
-        });
+       const PORT = process.env.PORT || 5000;
+          app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+       });
 
     } catch (error) {
         console.log("Server failed:", error.message);

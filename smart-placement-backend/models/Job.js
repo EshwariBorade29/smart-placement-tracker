@@ -25,6 +25,12 @@ const jobSchema = new mongoose.Schema({
 
     deadline: {
         type: Date
+    },
+
+    // ✅ ADD THIS
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
     }
 
 }, { timestamps: true });

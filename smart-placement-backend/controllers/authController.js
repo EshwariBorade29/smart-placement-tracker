@@ -1,10 +1,15 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
+const { validationResult } = require("express-validator");
 // SIGNUP
 exports.signup = async (req, res) => {
     try {
+        const errors = validationResult(req);
+          if (!errors.isEmpty()) {
+              return res.status(400).json({ errors: errors.array() });
+          }
+
         const { name, email, password, role, cgpa } = req.body;
 
         // check existing user
@@ -51,7 +56,7 @@ exports.login = async (req, res) => {
         // create token
         const token = jwt.sign(
             { id: user._id, role: user.role },
-            "secretkey",
+            process.env.JWT_SECRET,
             { expiresIn: "1d" }
         );
 
